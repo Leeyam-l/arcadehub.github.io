@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIXEL ARCADE</title>
+<style>
+  /* ============================================================
+     🎮 EASY CUSTOMIZATION — Edit these variables to restyle!
+     ============================================================ */
+  :root {
+    --bg:          #0a0a1a;        /* Page background */
+    --panel:       #12122a;        /* Card backgrounds */
+    --border:      #2a2a5a;        /* Card borders */
+    --neon-green:  #39ff14;        /* Accent green */
+    --neon-yellow: #ffe900;        /* Accent yellow */
+    --neon-pink:   #ff2d78;        /* Accent pink */
+    --neon-blue:   #00d4ff;        /* Accent blue */
+    --neon-purple: #b700ff;        /* Accent purple */
+    --text:        #e8e8ff;        /* Main text */
+    --muted:       #6666aa;        /* Muted text */
+    --pixel-font:  'Press Start 2P', monospace;
+    --scanline-opacity: 0.06;      /* Scanline overlay (0 to remove) */
+  }
+
+  /* ============================================================
+     ARCADE NAME — Change this in the <h1> tag below
+     ============================================================ */
+
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--pixel-font);
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='0' y='0' width='8' height='8' fill='%2339ff14'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%2339ff14'/%3E%3C/svg%3E") 4 4, crosshair;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,var(--scanline-opacity)) 2px,
+      rgba(0,0,0,var(--scanline-opacity)) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Star background */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 85%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.5) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============ HEADER ============ */
+  header {
+    text-align: center;
+    padding: 48px 24px 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .marquee-bar {
+    background: var(--neon-pink);
+    padding: 6px 0;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: #000;
+    margin-bottom: 32px;
+  }
+  .marquee-bar span {
+    display: inline-block;
+    animation: marquee 18s linear infinite;
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(100vw); }
+    to   { transform: translateX(-100%); }
+  }
+
+  .arcade-title {
+    font-size: clamp(22px, 5vw, 46px);
+    color: var(--neon-yellow);
+    text-shadow:
+      4px 4px 0 var(--neon-pink),
+      -2px -2px 0 var(--neon-purple),
+      0 0 30px var(--neon-yellow),
+      0 0 60px rgba(255,233,0,0.4);
+    animation: flicker 5s infinite;
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+  }
+
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96%  { opacity: 0.85; }
+    97%  { opacity: 1; }
+    98%  { opacity: 0.7; }
+    99%  { opacity: 1; }
+  }
+
+  .subtitle {
+    margin-top: 16px;
+    font-size: 9px;
+    color: var(--neon-blue);
+    letter-spacing: 0.2em;
+    animation: blink 1.4s step-end infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  .coin-prompt {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 8px;
+    color: var(--neon-green);
+    border: 2px solid var(--neon-green);
+    padding: 8px 16px;
+    box-shadow: 0 0 12px var(--neon-green), inset 0 0 8px rgba(57,255,20,0.1);
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 8px var(--neon-green), inset 0 0 4px rgba(57,255,20,0.1); }
+    50%       { box-shadow: 0 0 24px var(--neon-green), inset 0 0 16px rgba(57,255,20,0.2); }
+  }
+
+  /* pixel divider */
+  .px-divider {
+    margin: 24px auto;
+    width: 80%;
+    max-width: 600px;
+    height: 4px;
+    background: repeating-linear-gradient(90deg,
+      var(--neon-pink) 0px, var(--neon-pink) 8px,
+      transparent 8px, transparent 12px,
+      var(--neon-yellow) 12px, var(--neon-yellow) 20px,
+      transparent 20px, transparent 24px
+    );
+  }
+
+  /* ============ GRID ============ */
+  .games-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .section-label {
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.3em;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  /* ============================================================
+     🎮 GAME CARDS — Edit .game-card data attributes in HTML
+     Each card has: data-number, data-color, data-icon
+     ============================================================ */
+  .game-card {
+    background: var(--panel);
+    border: 3px solid var(--border);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.1s, border-color 0.2s;
+    image-rendering: pixelated;
+    cursor: pointer;
+  }
+
+  .game-card:nth-child(1) { --card-color: var(--neon-green); }
+  .game-card:nth-child(2) { --card-color: var(--neon-pink); }
+  .game-card:nth-child(3) { --card-color: var(--neon-blue); }
+  .game-card:nth-child(4) { --card-color: var(--neon-yellow); }
+  .game-card:nth-child(5) { --card-color: var(--neon-purple); }
+
+  .game-card:hover {
+    border-color: var(--card-color);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 0 rgba(0,0,0,0.5), 0 0 20px var(--card-color), inset 0 0 20px rgba(255,255,255,0.02);
+  }
+
+  /* pixel corner decorations */
+  .game-card::before,
+  .game-card::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    background: var(--card-color);
+    z-index: 2;
+  }
+  .game-card::before { top: 0; right: 0; }
+  .game-card::after  { bottom: 0; left: 0; }
+
+  .card-screen {
+    height: 160px;
+    background: #050510;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 3px solid var(--border);
+  }
+
+  .game-card:hover .card-screen { border-bottom-color: var(--card-color); }
+
+  .screen-icon {
+    font-size: 52px;
+    filter: drop-shadow(0 0 12px var(--card-color));
+    animation: icon-float 3s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Each card gets slightly different animation delay */
+  .game-card:nth-child(2) .screen-icon { animation-delay: -0.6s; }
+  .game-card:nth-child(3) .screen-icon { animation-delay: -1.2s; }
+  .game-card:nth-child(4) .screen-icon { animation-delay: -1.8s; }
+  .game-card:nth-child(5) .screen-icon { animation-delay: -2.4s; }
+
+  @keyframes icon-float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
+  }
+
+  /* Grid overlay on screen */
+  .card-screen::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--card-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--card-color) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.05;
+  }
+
+  /* CRT shine */
+  .card-screen::after {
+    content: '';
+    position: absolute;
+    top: -40%; left: -10%;
+    width: 60%; height: 60%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .card-number {
+    font-size: 7px;
+    color: var(--card-color);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+    opacity: 0.7;
+  }
+
+  .card-title {
+    font-size: 11px;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.5;
+    text-shadow: 0 0 8px var(--card-color);
+  }
+
+  .card-desc {
+    font-size: 7px;
+    color: var(--muted);
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 2px solid var(--border);
+  }
+
+  .card-status {
+    font-size: 7px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--neon-yellow);
+    animation: blink 1s step-end infinite;
+  }
+
+  .card-btn {
+    font-family: var(--pixel-font);
+    font-size: 7px;
+    background: transparent;
+    border: 2px solid var(--card-color);
+    color: var(--card-color);
+    padding: 6px 12px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: background 0.1s, color 0.1s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .card-btn:hover {
+    background: var(--card-color);
+    color: #000;
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    text-align: center;
+    padding: 32px 24px 48px;
+    font-size: 7px;
+    color: var(--muted);
+    position: relative;
+    z-index: 1;
+    line-height: 2;
+    border-top: 2px solid var(--border);
+  }
+
+  footer a { color: var(--neon-blue); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ============ MODAL (game iframe) ============ */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--panel);
+    border: 3px solid var(--neon-blue);
+    width: 100%;
+    max-width: 860px;
+    box-shadow: 0 0 40px var(--neon-blue);
+    position: relative;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 3px solid var(--border);
+    font-size: 9px;
+  }
+
+  .modal-close {
+    font-family: var(--pixel-font);
+    font-size: 9px;
+    background: var(--neon-pink);
+    border: none;
+    color: #000;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .modal-body {
+    padding: 16px;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 2.5;
+  }
+
+  .modal-body iframe {
+    width: 100%;
+    height: 480px;
+    border: none;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .games-grid { grid-template-columns: 1fr; }
+    .arcade-title { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     🎮 MARQUEE TEXT — Edit the text inside the <span> below
+     ============================================================ -->
+<div class="marquee-bar">
+  <span>★ INSERT COIN TO PLAY ★ HIGH SCORES TODAY ★ CHALLENGE YOUR FRIENDS ★ INSERT COIN TO PLAY ★ HIGH SCORES TODAY ★ CHALLENGE YOUR FRIENDS ★ INSERT COIN TO PLAY ★</span>
+</div>
+
+<header>
+  <!-- ============================================================
+       🎮 ARCADE NAME — Edit the text below
+       ============================================================ -->
+  <h1 class="arcade-title">PIXEL ARCADE</h1>
+  <p class="subtitle">▶ SELECT YOUR GAME ◀</p>
+  <div class="coin-prompt">► INSERT COIN TO BEGIN ◄</div>
+  <div class="px-divider"></div>
+</header>
+
+<main class="games-section">
+  <p class="section-label">— AVAILABLE GAMES —</p>
+
+  <div class="games-grid">
+
+    <!-- ============================================================
+         🎮 GAME CARD 1 — Edit: icon, title, description, button URL
+         ============================================================ -->
+    <div class="game-card">
+      <div class="card-screen">
+        <div class="screen-icon">💥</div>  <!-- Change icon here -->
+      </div>
+      <div class="card-body">
+        <div class="card-number">GAME // 01</div>
+        <div class="card-title">TANK BLITZ</div>  <!-- Change title here -->
+        <div class="card-desc">
+          A FUN SINGLE PLAYER TANK GAME, SHOOT YOUR ENEMIES!
+        </div>
+        <div class="card-footer">
+          <div class="card-status">
+            <div class="status-dot" style="background: #39ff14;"></div>
+            <span style="color: var(--neon-green)">LIVE</span>
+          </div>
+          <button class="card-btn" onclick="event.stopPropagation(); window.open('finaltankblitz.html.html', '_blank')">PLAY ►</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         🎮 GAME CARD 2
+         ============================================================ -->
+    <div class="game-card">
+      <div class="card-screen">
+        <div class="screen-icon">👾</div>
+      </div>
+      <div class="card-body">
+        <div class="card-number">GAME // 02</div>
+        <div class="card-title">TIME MAZE</div>
+        <div class="card-desc">
+          Short description of your game goes here. Edit this text!
+        </div>
+        <div class="card-footer">
+          <div class="card-status">
+            <div class="status-dot" style="background: #39ff14;"></div>
+            <span style="color: var(--neon-green)">LIVE</span>
+          </div>
+          <button class="card-btn" onclick="event.stopPropagation(); window.open('finaltimemaze.html.html', '_blank')">PLAY ►</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         🎮 GAME CARD 3
+         ============================================================ -->
+    <div class="game-card">
+      <div class="card-screen">
+        <div class="screen-icon">☄️</div>
+      </div>
+      <div class="card-body">
+        <div class="card-number">GAME // 03</div>
+        <div class="card-title">Asteroid Destroyer</div>
+        <div class="card-desc">
+          SINGLE PLAYER GAME WHERE YOU CAN BLAST DOWN ASTEROIDS!
+        </div>
+        <div class="card-footer">
+          <div class="card-status">
+            <div class="status-dot" style="background: #39ff14;"></div>
+            <span style="color: var(--neon-green)">LIVE</span>
+          </div>
+          <button class="card-btn" onclick="event.stopPropagation(); window.open('finalasteroids.html.html', '_blank')">PLAY ►</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         🎮 GAME CARD 4
+         ============================================================ -->
+    <div class="game-card">
+      <div class="card-screen">
+        <div class="screen-icon">🏆</div>
+      </div>
+      <div class="card-body">
+        <div class="card-number">GAME // 04</div>
+        <div class="card-title">GAME TITLE HERE</div>
+        <div class="card-desc">
+          Short description of your game goes here. Edit this text!
+        </div>
+        <div class="card-footer">
+          <div class="card-status">
+            <div class="status-dot"></div>
+            <span style="color: var(--neon-yellow)">WIP</span>
+          </div>
+          <button class="card-btn" onclick="event.stopPropagation(); window.open('GAME 04', 'GAME_URL_HERE')">PLAY ►</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         🎮 GAME CARD 5
+         ============================================================ -->
+    <div class="game-card">
+      <div class="card-screen">
+        <div class="screen-icon">⭐</div>
+      </div>
+      <div class="card-body">
+        <div class="card-number">GAME // 05</div>
+        <div class="card-title">WHACK A MOLE!</div>
+        <div class="card-desc">
+          WHACK SOME MOLES!, PICK BETWEEN 3 OPTIONS, EASY MEDIUM OR HARD
+        </div>
+        <div class="card-footer">
+          <div class="card-status">
+            <div class="status-dot" style="background: #39ff14;"></div>
+            <span style="color: var(--neon-GREEN)">LIVE</span>
+          </div>
+          <button class="card-btn" onclick="event.stopPropagation(); window.open('whackamole.html.html', '_blank')">PLAY ►</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.games-grid -->
+</main>
+
+<!-- ============================================================
+     🎮 FOOTER — Edit the copyright / credits text below
+     ============================================================ -->
+<footer>
+  <div>© 2026 PIXEL ARCADE — ALL RIGHTS RESERVED</div>
+  <div style="margin-top:8px; color: var(--neon-pink)">MADE WITH ♥ &amp; 8-BIT MAGIC</div>
+</footer>
+
+<!-- Modal: opens when a game card is clicked -->
+<div class="modal-overlay" id="gameModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="modalTitle">GAME 01</span>
+      <button class="modal-close" onclick="closeGame()">✕ CLOSE</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Game content loads here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     🎮 openGame — called when a card is clicked
+     - title: shown in the modal header
+     - url:   the URL of your game (can be an iframe src or a link)
+              Set to 'GAME_URL_HERE' to show a placeholder
+     ============================================================ */
+  function openGame(title, url) {
+    document.getElementById('modalTitle').textContent = title;
+    const body = document.getElementById('modalBody');
+
+    if (!url || url === 'GAME_URL_HERE') {
+      // Placeholder message — replace with iframe once game is ready
+      body.innerHTML = `
+        <div>
+          <div style="font-size:40px; margin-bottom:16px;">🚧</div>
+          <div style="font-size:10px; color: var(--neon-yellow); margin-bottom:12px;">${title}</div>
+          <div>GAME COMING SOON...</div>
+          <div style="margin-top:16px; font-size:7px;">Replace 'GAME_URL_HERE' in the HTML<br>with your game's URL to launch it here.</div>
+        </div>`;
+    } else {
+      // Load game in an iframe
+      body.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+    }
+
+    document.getElementById('gameModal').classList.add('open');
+  }
+
+  function closeGame() {
+    document.getElementById('gameModal').classList.remove('open');
+    document.getElementById('modalBody').innerHTML = '';
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('gameModal').addEventListener('click', function(e) {
+    if (e.target === this) closeGame();
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGame(); });
+</script>
+
+</body>
+</html>

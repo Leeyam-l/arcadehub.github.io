@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIME MAZE</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --neon-cyan: #00f5ff;
+    --neon-pink: #ff006e;
+    --neon-green: #39ff14;
+    --neon-yellow: #ffe600;
+    --dim: #2a4a5a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    color: #c0e0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.012) 2px, rgba(0,245,255,0.012) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,245,255,0.012) 2px, rgba(0,245,255,0.012) 4px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    transition: background 0.4s;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    width: 100%;
+  }
+
+  .title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(24px, 5vw, 44px);
+    letter-spacing: 0.2em;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 30px rgba(0,245,255,0.35);
+    animation: flicker 7s infinite;
+  }
+  .title span { color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink); }
+
+  @keyframes flicker {
+    0%,93%,100%{opacity:1} 94%{opacity:.8} 95%{opacity:1} 97%{opacity:.7} 98%{opacity:1}
+  }
+
+  .hud {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .hud-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .hud-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #1a3a4a;
+  }
+  .hud-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0,245,255,0.5);
+    min-width: 60px;
+    text-align: center;
+  }
+  .hud-value.warn  { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255,230,0,0.5); }
+  .hud-value.alert { color: var(--neon-pink);   text-shadow: 0 0 8px rgba(255,0,110,0.6); animation: blink .5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .bar-wrap {
+    width: min(700px, calc(100vw - 32px));
+    height: 5px;
+    background: rgba(0,245,255,0.06);
+    border: 1px solid rgba(0,245,255,0.08);
+    overflow: hidden;
+  }
+  .bar {
+    height: 100%;
+    width: 100%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan);
+    transition: width .9s linear, background .5s, box-shadow .5s;
+  }
+  .bar.warn   { background: var(--neon-yellow); box-shadow: 0 0 8px var(--neon-yellow); }
+  .bar.danger { background: var(--neon-pink);   box-shadow: 0 0 12px var(--neon-pink); animation: barFlash .25s infinite alternate; }
+  @keyframes barFlash { from{opacity:1} to{opacity:.4} }
+
+  .maze-wrapper {
+    position: relative;
+    border: 1px solid rgba(0,245,255,0.15);
+    box-shadow: 0 0 20px rgba(0,245,255,0.07), 0 0 60px rgba(0,245,255,0.03), inset 0 0 30px rgba(0,0,0,.5);
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)}
+  }
+  .shaking { animation: shake .35s ease; }
+
+  canvas { display: block; }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(5,10,15,.9);
+    backdrop-filter: blur(3px);
+    z-index: 10;
+  }
+  .overlay.hidden { display: none; }
+
+  .ov-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(18px, 4vw, 30px);
+    font-weight: 900;
+    letter-spacing: .2em;
+  }
+  .ov-title.win  { color: var(--neon-green); text-shadow: 0 0 14px var(--neon-green); animation: glow 1s infinite alternate; }
+  .ov-title.lose { color: var(--neon-pink);  text-shadow: 0 0 14px var(--neon-pink);  animation: blink .4s infinite; }
+  @keyframes glow { from{text-shadow:0 0 10px var(--neon-green)} to{text-shadow:0 0 24px var(--neon-green),0 0 50px rgba(57,255,20,.3)} }
+
+  .ov-stats {
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: .1em;
+    text-align: center;
+    line-height: 2;
+  }
+  .ov-stats strong { color: var(--neon-cyan); }
+
+  .diff-row { display: flex; gap: 6px; }
+
+  button {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    padding: 9px 20px;
+    background: transparent;
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    cursor: pointer;
+    clip-path: polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%);
+    transition: all .15s;
+  }
+  button:hover { background: rgba(0,245,255,.1); box-shadow: 0 0 10px rgba(0,245,255,.3); }
+  button.pink  { border-color: var(--neon-pink); color: var(--neon-pink); }
+  button.pink:hover { background: rgba(255,0,110,.1); box-shadow: 0 0 10px rgba(255,0,110,.3); }
+  button.dim   { border-color: var(--dim); color: var(--dim); font-size: 9px; padding: 7px 12px; }
+  button.dim.active { border-color: var(--neon-yellow); color: var(--neon-yellow); box-shadow: 0 0 8px rgba(255,230,0,.2); }
+
+  .ctrl-row { display: flex; gap: 10px; }
+
+  .hint { font-size: 10px; color: #1a3040; letter-spacing: .1em; }
+  .hint kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid #1a3040;
+    font-family: inherit;
+    font-size: 9px;
+    color: #253a45;
+  }
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<div class="container">
+  <div class="title">TIME<span> </span>MAZE</div>
+
+  <div class="hud">
+    <div class="hud-item"><div class="hud-label">Level</div><div class="hud-value" id="elLvl">1</div></div>
+    <div class="hud-item"><div class="hud-label">Time Left</div><div class="hud-value" id="elTmr">01:00</div></div>
+    <div class="hud-item"><div class="hud-label">Moves</div><div class="hud-value" id="elMvs">0</div></div>
+    <div class="hud-item"><div class="hud-label">Best</div><div class="hud-value" id="elBst">--:--</div></div>
+  </div>
+
+  <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+
+  <div class="diff-row">
+    <button class="dim active" data-d="easy">Easy</button>
+    <button class="dim" data-d="medium">Medium</button>
+    <button class="dim" data-d="hard">Hard</button>
+    <button class="dim" data-d="brutal">Brutal</button>
+  </div>
+
+  <div class="maze-wrapper" id="wrap">
+    <canvas id="c"></canvas>
+    <div class="overlay hidden" id="ov">
+      <div class="ov-title" id="ovT"></div>
+      <div class="ov-stats" id="ovS"></div>
+      <button id="ovBtn">Next Level</button>
+    </div>
+  </div>
+
+  <div class="ctrl-row">
+    <button id="newBtn">New Maze</button>
+    <button class="pink" id="solBtn">Show Solution</button>
+  </div>
+
+  <div class="hint">
+    <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move
+  </div>
+</div>
+
+<script>
+const canvas   = document.getElementById('c');
+const ctx      = canvas.getContext('2d');
+const wrap     = document.getElementById('wrap');
+const ov       = document.getElementById('ov');
+const ovT      = document.getElementById('ovT');
+const ovS      = document.getElementById('ovS');
+const ovBtn    = document.getElementById('ovBtn');
+const elLvl    = document.getElementById('elLvl');
+const elTmr    = document.getElementById('elTmr');
+const elMvs    = document.getElementById('elMvs');
+const elBst    = document.getElementById('elBst');
+const bar      = document.getElementById('bar');
+const vignette = document.getElementById('vignette');
+
+const DIFFS = {
+  easy:   { baseCols:13, baseRows:11, baseTime:60  },
+  medium: { baseCols:19, baseRows:15, baseTime:80  },
+  hard:   { baseCols:27, baseRows:21, baseTime:100 },
+  brutal: { baseCols:35, baseRows:27, baseTime:120 },
+};
+
+let diff = 'easy', level = 1;
+let cols, rows, CELL;
+let grid, player, visited, solution;
+let showSol, solUsed, gameOver;
+let timeLeft, totalTime, ticker, moves;
+let bests = {};
+let rafId = null;
+
+function idx(c, r) { return r * cols + c; }
+
+// ── Iterative DFS maze builder ────────────────────────────────────────────────
+function buildMaze() {
+  grid = [];
+  for (let i = 0; i < cols * rows; i++) {
+    grid.push({ walls: { N:true, S:true, E:true, W:true }, seen: false });
+  }
+
+  const DIRS = [
+    { dc:0,  dr:-1, from:'N', to:'S' },
+    { dc:0,  dr:1,  from:'S', to:'N' },
+    { dc:1,  dr:0,  from:'E', to:'W' },
+    { dc:-1, dr:0,  from:'W', to:'E' },
+  ];
+
+  const stack = [{c:0, r:0}];
+  grid[idx(0,0)].seen = true;
+
+  while (stack.length > 0) {
+    const cur = stack[stack.length - 1];
+    // shuffle directions
+    for (let i = DIRS.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = DIRS[i]; DIRS[i] = DIRS[j]; DIRS[j] = tmp;
+    }
+    let moved = false;
+    for (let i = 0; i < DIRS.length; i++) {
+      const d = DIRS[i];
+      const nc = cur.c + d.dc, nr = cur.r + d.dr;
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+      if (grid[idx(nc, nr)].seen) continue;
+      grid[idx(cur.c, cur.r)].walls[d.from] = false;
+      grid[idx(nc, nr)].walls[d.to] = false;
+      grid[idx(nc, nr)].seen = true;
+      stack.push({c:nc, r:nr});
+      moved = true;
+      break;
+    }
+    if (!moved) stack.pop();
+  }
+}
+
+// ── BFS solver ────────────────────────────────────────────────────────────────
+function solveBFS() {
+  const NB = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
+  const q = [{c:0, r:0, path:[{c:0,r:0}]}];
+  const seen = new Set(['0,0']);
+  while (q.length > 0) {
+    const {c, r, path} = q.shift();
+    if (c === cols-1 && r === rows-1) return path;
+    for (const dir in NB) {
+      if (grid[idx(c,r)].walls[dir]) continue;
+      const nc = c + NB[dir][0], nr = r + NB[dir][1];
+      const key = nc+','+nr;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      q.push({c:nc, r:nr, path: path.concat({c:nc,r:nr})});
+    }
+  }
+  return [];
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initGame(keepLevel) {
+  if (!keepLevel) level = 1;
+
+  const cfg = DIFFS[diff];
+  const bonus = Math.min(level - 1, 12);
+  const step  = diff === 'brutal' ? 1 : 2;
+
+  cols = cfg.baseCols + bonus * step;
+  rows = cfg.baseRows + bonus * step;
+  if (cols % 2 === 0) cols++;
+  if (rows % 2 === 0) rows++;
+
+  const maxW = Math.min(window.innerWidth  - 32, 720);
+  const maxH = Math.min(window.innerHeight - 260, 600);
+  CELL = Math.max(9, Math.floor(Math.min(maxW / cols, maxH / rows)));
+
+  canvas.width  = cols * CELL;
+  canvas.height = rows * CELL;
+
+  buildMaze();
+  solution = solveBFS();
+
+  player   = {c:0, r:0};
+  visited  = new Set(['0,0']);
+  moves    = 0;
+  showSol  = false;
+  solUsed  = false;
+  gameOver = false;
+
+  totalTime = cfg.baseTime + bonus * 6;
+  timeLeft  = totalTime;
+
+  elLvl.textContent = level;
+  elMvs.textContent = '0';
+  document.getElementById('solBtn').textContent = 'Show Solution';
+  ov.classList.add('hidden');
+  vignette.style.background = 'none';
+
+  clearInterval(ticker);
+  ticker = setInterval(tick, 1000);
+  refreshBar();
+  refreshTimer();
+
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(drawFrame);
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+function tick() {
+  if (gameOver) return;
+  timeLeft = Math.max(0, timeLeft - 1);
+  refreshBar();
+  refreshTimer();
+  if (timeLeft === 0) {
+    gameOver = true;
+    clearInterval(ticker);
+    showDeath();
+  }
+}
+
+function fmt(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function refreshTimer() {
+  const pct = timeLeft / totalTime;
+  elTmr.textContent = fmt(timeLeft);
+  if      (pct < 0.25) elTmr.className = 'hud-value alert';
+  else if (pct < 0.50) elTmr.className = 'hud-value warn';
+  else                 elTmr.className = 'hud-value';
+
+  if (pct < 0.45) {
+    const i = ((0.45 - pct) / 0.45) * 0.6;
+    vignette.style.background = 'radial-gradient(ellipse at center, transparent 30%, rgba(255,0,50,' + i.toFixed(2) + ') 100%)';
+  } else {
+    vignette.style.background = 'none';
+  }
+
+  if (pct < 0.25 && timeLeft > 0 && timeLeft % 5 === 0) {
+    wrap.classList.remove('shaking');
+    void wrap.offsetWidth;
+    wrap.classList.add('shaking');
+  }
+}
+
+function refreshBar() {
+  const pct = timeLeft / totalTime;
+  bar.style.width = (pct * 100) + '%';
+  if      (pct < 0.25) bar.className = 'bar danger';
+  else if (pct < 0.50) bar.className = 'bar warn';
+  else                 bar.className = 'bar';
+}
+
+// ── Win / Death ───────────────────────────────────────────────────────────────
+function showWin() {
+  const used = totalTime - timeLeft;
+  if (!bests[diff] || timeLeft > bests[diff]) bests[diff] = timeLeft;
+  elBst.textContent = fmt(bests[diff]);
+
+  ovT.className   = 'ov-title win';
+  ovT.textContent = 'ESCAPED';
+  ovS.innerHTML =
+    'Solved in: <strong>' + fmt(used) + '</strong> &nbsp;|&nbsp; ' +
+    'Left: <strong style="color:' + (timeLeft < totalTime*.25?'#ff006e':'#39ff14') + '">' + fmt(timeLeft) + '</strong><br>' +
+    'Moves: <strong>' + moves + '</strong><br>' +
+    (solUsed
+      ? '<span style="color:#ff006e">Hint used — dishonourable.</span>'
+      : '<span style="color:#39ff14">Clean run! 🔥</span>');
+  ovBtn.textContent = 'Next Level →';
+  ov.classList.remove('hidden');
+  vignette.style.background = 'none';
+}
+
+function showDeath() {
+  ovT.className   = 'ov-title lose';
+  ovT.textContent = "TIME'S UP";
+  ovS.innerHTML =
+    'You died on <strong>Level ' + level + '</strong>.<br>' +
+    'Moves made: <strong>' + moves + '</strong><br>' +
+    '<span style="color:#ff006e">The maze consumed you.</span>';
+  ovBtn.textContent = 'Try Again';
+  ov.classList.remove('hidden');
+  vignette.style.background = 'radial-gradient(ellipse at center, transparent 20%, rgba(255,0,50,.65) 100%)';
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function drawFrame() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#080e14';
+  ctx.fillRect(0, 0, W, H);
+
+  // visited trail
+  ctx.fillStyle = 'rgba(0,245,255,0.045)';
+  visited.forEach(function(key) {
+    const parts = key.split(',');
+    const vc = +parts[0], vr = +parts[1];
+    ctx.fillRect(vc*CELL+1, vr*CELL+1, CELL-2, CELL-2);
+  });
+
+  // solution path
+  if (showSol && solution.length > 0) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,0,110,0.38)';
+    ctx.lineWidth   = Math.max(2, CELL * 0.22);
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < solution.length; i++) {
+      const sx = solution[i].c * CELL + CELL/2;
+      const sy = solution[i].r * CELL + CELL/2;
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // walls
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = grid[idx(c, r)];
+      const x = c * CELL, y = r * CELL;
+      const edge = (c===0||r===0||c===cols-1||r===rows-1);
+      ctx.strokeStyle = edge ? 'rgba(0,245,255,0.55)' : 'rgba(0,180,220,0.27)';
+      ctx.lineWidth   = edge ? 1.5 : 1;
+      ctx.lineCap     = 'square';
+      if (cell.walls.N) { ctx.beginPath(); ctx.moveTo(x,y);       ctx.lineTo(x+CELL,y);       ctx.stroke(); }
+      if (cell.walls.S) { ctx.beginPath(); ctx.moveTo(x,y+CELL);  ctx.lineTo(x+CELL,y+CELL);  ctx.stroke(); }
+      if (cell.walls.W) { ctx.beginPath(); ctx.moveTo(x,y);       ctx.lineTo(x,y+CELL);       ctx.stroke(); }
+      if (cell.walls.E) { ctx.beginPath(); ctx.moveTo(x+CELL,y);  ctx.lineTo(x+CELL,y+CELL);  ctx.stroke(); }
+    }
+  }
+
+  // start
+  ctx.fillStyle = 'rgba(57,255,20,0.12)';
+  ctx.fillRect(1, 1, CELL-2, CELL-2);
+
+  // exit
+  const ex = (cols-1)*CELL, ey = (rows-1)*CELL;
+  const eg = ctx.createRadialGradient(ex+CELL/2, ey+CELL/2, 0, ex+CELL/2, ey+CELL/2, CELL*.8);
+  eg.addColorStop(0, 'rgba(255,0,110,0.55)');
+  eg.addColorStop(1, 'rgba(255,0,110,0)');
+  ctx.fillStyle = eg;
+  ctx.fillRect(ex, ey, CELL, CELL);
+  const pulse = 0.65 + 0.35 * Math.sin(Date.now() / 280);
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,0,110,' + pulse + ')';
+  ctx.font = 'bold ' + Math.max(10, Math.floor(CELL*.58)) + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✕', ex+CELL/2, ey+CELL/2);
+  ctx.restore();
+
+  // player
+  const px = player.c*CELL + CELL/2;
+  const py = player.r*CELL + CELL/2;
+  const pr = CELL * 0.31;
+  const pct = timeLeft / totalTime;
+  const playerCol = pct < 0.25
+    ? 'hsl(' + Math.round(pct*4*180) + ',100%,55%)'
+    : '#00f5ff';
+
+  const halo = ctx.createRadialGradient(px, py, 0, px, py, CELL*.75);
+  halo.addColorStop(0, 'rgba(0,245,255,0.18)');
+  halo.addColorStop(1, 'rgba(0,245,255,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(px-CELL, py-CELL, CELL*2, CELL*2);
+
+  ctx.beginPath();
+  ctx.arc(px, py, pr, 0, Math.PI*2);
+  ctx.fillStyle   = playerCol;
+  ctx.shadowColor = playerCol;
+  ctx.shadowBlur  = 14;
+  ctx.fill();
+  ctx.shadowBlur  = 0;
+
+  ctx.beginPath();
+  ctx.arc(px, py, pr*.32, 0, Math.PI*2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  rafId = requestAnimationFrame(drawFrame);
+}
+
+// ── Move ──────────────────────────────────────────────────────────────────────
+function move(dir) {
+  if (gameOver) return;
+  const DM = {N:[0,-1], S:[0,1], E:[1,0], W:[-1,0]};
+  if (grid[idx(player.c, player.r)].walls[dir]) return;
+  player.c += DM[dir][0];
+  player.r += DM[dir][1];
+  visited.add(player.c + ',' + player.r);
+  moves++;
+  elMvs.textContent = moves;
+  if (player.c === cols-1 && player.r === rows-1) {
+    gameOver = true;
+    clearInterval(ticker);
+    level++;
+    elLvl.textContent = level;
+    showWin();
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  const map = {
+    ArrowUp:'N', ArrowDown:'S', ArrowLeft:'W', ArrowRight:'E',
+    w:'N', s:'S', a:'W', d:'E', W:'N', S:'S', A:'W', D:'E'
+  };
+  if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
+});
+
+let tx=0, ty=0;
+canvas.addEventListener('touchstart', function(e){ tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+canvas.addEventListener('touchend',   function(e){
+  const dx = e.changedTouches[0].clientX - tx;
+  const dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'E' : 'W');
+  else move(dy > 0 ? 'S' : 'N');
+}, {passive:true});
+
+document.getElementById('newBtn').addEventListener('click', function(){ initGame(false); });
+
+document.getElementById('solBtn').addEventListener('click', function(){
+  showSol = !showSol;
+  if (showSol) solUsed = true;
+  this.textContent = showSol ? 'Hide Solution' : 'Show Solution';
+});
+
+ovBtn.addEventListener('click', function(){
+  if (ovBtn.textContent === 'Try Again') level = Math.max(1, level - 1);
+  initGame(true);
+});
+
+document.querySelectorAll('[data-d]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('[data-d]').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    diff = btn.getAttribute('data-d');
+    level = 1;
+    initGame(false);
+  });
+});
+
+initGame(false);
+</script>
+</body>
+</html>
